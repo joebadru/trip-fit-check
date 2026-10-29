@@ -13,7 +13,7 @@ export const VERDICT: Record<Verdict, { label: string; cls: string; dot: string;
 export function VerdictPill({ v }: { v: Verdict }) {
   const s = VERDICT[v];
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${s.cls}`}>
+    <span className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${s.cls}`}>
       <span aria-hidden>{s.icon}</span>
       {s.label}
     </span>
