@@ -37,7 +37,7 @@ function Tile({ label, value, suffix, gate }: { label: string; value: number; su
 export default function EvalPage() {
   const [results, setResults] = useState<Record<string, CaseResult>>({});
   const [running, setRunning] = useState(false);
-  const [baseline, setBaseline] = useState<{ ranAt: string; model: string; results: CaseResult[] } | null>(null);
+  const [baseline, setBaseline] = useState<{ ranAt: string; model: string; results: CaseResult[]; history?: { label: string; passed: number | null; total: number | null; note: string }[] } | null>(null);
 
   useEffect(() => {
     fetch("/eval-baseline.json")
@@ -117,6 +117,24 @@ export default function EvalPage() {
           {s.cases - s.errors}/{s.cases} cases scored · abstention precision {s.abstentionPrecision}% · {s.guardrailDowngrades} answer(s)
           withheld by the citation guardrail · p50 {s.p50LatencyMs}ms · avg {s.avgInputTokens} input / {s.avgOutputTokens} output tokens per check
         </p>
+      )}
+
+      {baseline?.history && (
+        <section className="mt-6 rounded-2xl border border-line p-4">
+          <div className="text-sm font-semibold">How the evaluation improved the product</div>
+          <p className="mt-0.5 text-xs text-muted">The golden set caught a real failure. One instruction change fixed it, and re-runs confirmed nothing else broke.</p>
+          <ol className="mt-3 grid gap-2 md:grid-cols-4">
+            {baseline.history.map((h) => (
+              <li key={h.label} className={`rounded-xl p-3 ${h.passed === null ? "bg-partial-soft" : h.passed === h.total ? "bg-fit-soft" : "bg-nofit-soft"}`}>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wider">{h.label}</span>
+                  {h.passed !== null && <span className="text-sm font-semibold tabular-nums">{h.passed}/{h.total}</span>}
+                </div>
+                <p className="mt-1 text-xs leading-snug">{h.note}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
       )}
 
       <div className="mt-6 overflow-x-auto rounded-2xl border border-line">
