@@ -37,7 +37,7 @@ function Tile({ label, value, suffix, gate }: { label: string; value: number; su
 export default function EvalPage() {
   const [results, setResults] = useState<Record<string, CaseResult>>({});
   const [running, setRunning] = useState(false);
-  const [baseline, setBaseline] = useState<{ ranAt: string; model: string; results: CaseResult[]; history?: { label: string; passed: number | null; total: number | null; note: string }[] } | null>(null);
+  const [baseline, setBaseline] = useState<{ ranAt: string; model: string; results: CaseResult[]; history?: { label: string; passed: number | null; total: number | null; note: string }[]; fallback?: { models: string; passed: number; total: number; hallucinationRate: number; citationFaithfulness: number; p95LatencyMs: number; note: string } } | null>(null);
 
   useEffect(() => {
     fetch("/eval-baseline.json")
@@ -134,6 +134,19 @@ export default function EvalPage() {
               </li>
             ))}
           </ol>
+        </section>
+      )}
+
+      {baseline?.fallback && (
+        <section className="mt-4 rounded-2xl border border-line p-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <div className="text-sm font-semibold">Backup model must pass the same gates</div>
+            <span className="rounded-full bg-fit-soft px-2.5 py-0.5 text-xs font-semibold text-fit">{baseline.fallback.passed}/{baseline.fallback.total} passed</span>
+          </div>
+          <p className="mt-1 text-xs text-muted">
+            If the primary model errors or runs past 20 s, the check is routed to {baseline.fallback.models}. Same prompt, same quote check.
+            Forced backup run: {baseline.fallback.hallucinationRate}% invented answers · {baseline.fallback.citationFaithfulness}% citations verified · p95 {baseline.fallback.p95LatencyMs} ms. {baseline.fallback.note}
+          </p>
         </section>
       )}
 

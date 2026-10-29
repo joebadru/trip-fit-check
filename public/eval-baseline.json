@@ -474,5 +474,18 @@
    "total": 22,
    "note": "Repeat run for stability: all pass again. p95 latency 5473 ms."
   }
- ]
+ ],
+ "fallback": {
+  "ranAt": "2026-10-29T12:30:00+01:00",
+  "models": "gemini-3.6-flash, then gemini-3.1-flash-lite",
+  "passed": 22,
+  "total": 22,
+  "verdictAccuracy": 100.0,
+  "abstentionRecall": 100.0,
+  "hallucinationRate": 0.0,
+  "citationFaithfulness": 100.0,
+  "sourceMatchRate": 100.0,
+  "p95LatencyMs": 7766,
+  "note": "Backup route, forced for all 22 cases. Gemini 3.8 Flash was dropped from the chain after it timed out under load during testing."
+ }
 }
