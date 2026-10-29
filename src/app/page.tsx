@@ -126,6 +126,12 @@ export default function ListingPage() {
           <TripFitPanel />
         </aside>
       </div>
+      <a
+        href="#trip-fit"
+        className="fixed bottom-4 left-1/2 z-40 -translate-x-1/2 rounded-full bg-ink px-5 py-3 text-sm font-semibold text-white shadow-lg lg:hidden"
+      >
+        ✦ Will this fit my trip?
+      </a>
     </main>
   );
 }
