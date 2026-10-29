@@ -6,12 +6,12 @@ import { scoreCase } from "@/lib/score";
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
-  const { caseId, route } = (await req.json()) as { caseId: string; route?: string };
+  const { caseId, route, backup } = (await req.json()) as { caseId: string; route?: string; backup?: string };
   const c = GOLDEN.find((g) => g.id === caseId);
   if (!c) return NextResponse.json({ error: "Unknown case" }, { status: 400 });
   const choice: RouteChoice = route === "fallback" ? "fallback" : route === "primary" ? "primary" : "auto";
   try {
-    const r = await runFitCheck({ needs: [c.need] }, c.hostAnswers || [], choice);
+    const r = await runFitCheck({ needs: [c.need] }, c.hostAnswers || [], choice, backup);
     return NextResponse.json({ ...scoreCase(c, r), model: r.meta.model, route: r.meta.route, inputTokens: r.meta.inputTokens, outputTokens: r.meta.outputTokens });
   } catch (e) {
     return NextResponse.json({

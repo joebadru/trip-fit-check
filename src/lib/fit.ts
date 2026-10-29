@@ -168,9 +168,9 @@ async function callModel(which: "primary" | "fallback", trip: TripContext, sourc
 }
 
 /** Try each backup model in order until one answers or the overall budget runs out. */
-async function callFallbackChain(trip: TripContext, sources: Source[], deadline: number) {
+async function callFallbackChain(trip: TripContext, sources: Source[], deadline: number, chain: string[] = FALLBACK_MODELS) {
   let last: unknown;
-  for (const id of FALLBACK_MODELS) {
+  for (const id of chain) {
     if (Date.now() > deadline) break;
     try {
       return await callModel("fallback", trip, sources, id, Math.min(FALLBACK_BUDGET_MS, deadline - Date.now()));
@@ -189,7 +189,9 @@ function reasonOf(e: unknown) {
   return "primary error";
 }
 
-export async function runFitCheck(trip: TripContext, hostAnswers: HostAnswer[] = [], route: RouteChoice = "auto"): Promise<FitResult> {
+const ALLOWED_BACKUPS = ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"];
+
+export async function runFitCheck(trip: TripContext, hostAnswers: HostAnswer[] = [], route: RouteChoice = "auto", onlyBackup?: string): Promise<FitResult> {
   const sources = allSources(hostAnswers);
   const started = Date.now();
   const hasPrimary = !!process.env.ANTHROPIC_API_KEY;
@@ -205,7 +207,7 @@ export async function runFitCheck(trip: TripContext, hostAnswers: HostAnswer[] =
   let out: Awaited<ReturnType<typeof callModel>>;
   const deadline = started + 50000;
   try {
-    out = used === "primary" ? await callModel("primary", trip, sources) : await callFallbackChain(trip, sources, deadline);
+    out = used === "primary" ? await callModel("primary", trip, sources) : await callFallbackChain(trip, sources, deadline, onlyBackup && ALLOWED_BACKUPS.includes(onlyBackup) ? [onlyBackup] : FALLBACK_MODELS);
   } catch (e) {
     if (used === "primary" && route === "auto" && hasFallback) {
       fallbackReason = reasonOf(e);
