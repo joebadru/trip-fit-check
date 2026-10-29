@@ -11,7 +11,10 @@ import type { Assessment, Evidence, FitResult, HostAnswer, Source, TripContext, 
  * and the backup has to pass the same golden-set release gates before it is allowed to serve.
  */
 export const MODEL_ID = process.env.TRIPFIT_MODEL || "claude-sonnet-5-5";
-export const FALLBACK_MODEL_ID = process.env.TRIPFIT_FALLBACK_MODEL || "gemini-3.8-flash";
+/** Backup chain, tried in order. Comma-separated override: TRIPFIT_FALLBACK_MODELS. */
+export const FALLBACK_MODELS = (process.env.TRIPFIT_FALLBACK_MODELS || process.env.TRIPFIT_FALLBACK_MODEL || "gemini-3.8-flash,gemini-3.6-flash")
+  .split(",").map((m) => m.trim()).filter(Boolean);
+export const FALLBACK_MODEL_ID = FALLBACK_MODELS[0];
 const PRIMARY_BUDGET_MS = Number(process.env.TRIPFIT_PRIMARY_TIMEOUT_MS || 20000);
 const FALLBACK_BUDGET_MS = Number(process.env.TRIPFIT_FALLBACK_TIMEOUT_MS || 25000);
 const GEMINI_KEY = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
@@ -20,7 +23,7 @@ const google = createGoogleGenerativeAI({ apiKey: GEMINI_KEY });
 export function routingStatus() {
   return {
     primary: { model: MODEL_ID, configured: !!process.env.ANTHROPIC_API_KEY, timeoutMs: PRIMARY_BUDGET_MS },
-    fallback: { model: FALLBACK_MODEL_ID, configured: !!GEMINI_KEY, timeoutMs: FALLBACK_BUDGET_MS },
+    fallback: { models: FALLBACK_MODELS, configured: !!GEMINI_KEY, timeoutMs: FALLBACK_BUDGET_MS },
   };
 }
 
@@ -147,19 +150,35 @@ export function applyGuardrails(raw: z.infer<typeof schema>, sources: Source[]) 
   return { assessments, evidenceTotal, evidenceVerified, downgrades };
 }
 
-async function callModel(which: "primary" | "fallback", trip: TripContext, sources: Source[]) {
+async function callModel(which: "primary" | "fallback", trip: TripContext, sources: Source[], modelId?: string, timeoutMs?: number) {
   const isPrimary = which === "primary";
+  const id = modelId || (isPrimary ? MODEL_ID : FALLBACK_MODEL_ID);
   const result = await generateText({
-    model: isPrimary ? anthropic(MODEL_ID) : google(FALLBACK_MODEL_ID),
+    model: isPrimary ? anthropic(id) : google(id),
     system: SYSTEM_PROMPT,
     prompt: buildPrompt(trip, sources),
     output: Output.object({ schema }),
     temperature: 0,
     maxOutputTokens: isPrimary ? 2000 : 8000,
-    maxRetries: isPrimary ? 0 : 1,
-    abortSignal: AbortSignal.timeout(isPrimary ? PRIMARY_BUDGET_MS : FALLBACK_BUDGET_MS),
+    maxRetries: 0,
+    abortSignal: AbortSignal.timeout(Math.max(1000, timeoutMs ?? (isPrimary ? PRIMARY_BUDGET_MS : FALLBACK_BUDGET_MS))),
   });
-  return { raw: result.output as z.infer<typeof schema>, usage: result.usage as { inputTokens?: number; outputTokens?: number } | undefined };
+  return { id, raw: result.output as z.infer<typeof schema>, usage: result.usage as { inputTokens?: number; outputTokens?: number } | undefined };
+}
+
+/** Try each backup model in order until one answers or the overall budget runs out. */
+async function callFallbackChain(trip: TripContext, sources: Source[], deadline: number) {
+  let last: unknown;
+  for (const id of FALLBACK_MODELS) {
+    if (Date.now() > deadline) break;
+    try {
+      return await callModel("fallback", trip, sources, id, Math.min(FALLBACK_BUDGET_MS, deadline - Date.now()));
+    } catch (e) {
+      last = e;
+      console.warn("[tripfit] backup model failed:", id, e instanceof Error ? e.message.slice(0, 120) : e);
+    }
+  }
+  throw last instanceof Error ? last : new Error("All backup models failed");
 }
 
 function reasonOf(e: unknown) {
@@ -183,14 +202,15 @@ export async function runFitCheck(trip: TripContext, hostAnswers: HostAnswer[] =
   let used: "primary" | "fallback" = route === "fallback" || !hasPrimary ? "fallback" : "primary";
   let fallbackReason: string | undefined = used === "fallback" ? (route === "fallback" ? "forced for evaluation" : "primary not configured") : undefined;
   let out: Awaited<ReturnType<typeof callModel>>;
+  const deadline = started + 50000;
   try {
-    out = await callModel(used, trip, sources);
+    out = used === "primary" ? await callModel("primary", trip, sources) : await callFallbackChain(trip, sources, deadline);
   } catch (e) {
     if (used === "primary" && route === "auto" && hasFallback) {
       fallbackReason = reasonOf(e);
       console.warn("[tripfit] routing to fallback:", fallbackReason);
       used = "fallback";
-      out = await callModel("fallback", trip, sources);
+      out = await callFallbackChain(trip, sources, deadline);
     } else {
       throw e;
     }
@@ -202,7 +222,7 @@ export async function runFitCheck(trip: TripContext, hostAnswers: HostAnswer[] =
     assessments: g.assessments,
     followUp: out.raw.followUp,
     meta: {
-      model: used === "primary" ? MODEL_ID : FALLBACK_MODEL_ID,
+      model: out.id,
       route: used,
       fallbackReason,
       latencyMs: Date.now() - started,
