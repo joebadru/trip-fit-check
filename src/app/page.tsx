@@ -33,17 +33,19 @@ export default function ListingPage() {
       <div className="-mx-4 mt-5 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 sm:hidden">
         {LISTING.photos.map((p, i) => (
           <div key={p.label} className={`relative h-64 w-[85%] shrink-0 snap-center overflow-hidden rounded-2xl bg-gradient-to-br ${p.tone}`}>
-            <div className="absolute inset-0 opacity-[0.12] [background-image:radial-gradient(#000_1px,transparent_1px)] [background-size:14px_14px]" />
-            <span className="absolute bottom-3 left-3 rounded-full bg-white/85 px-2.5 py-1 text-[11px] font-medium">{p.label}</span>
+            <img src={p.src} alt={`${p.label}, AI-generated illustration`} className="absolute inset-0 h-full w-full object-cover" loading={i === 0 ? "eager" : "lazy"} />
+            <span className="absolute bottom-3 left-3 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-medium shadow-sm">{p.label}</span>
             <span className="absolute bottom-3 right-3 rounded-md bg-black/55 px-2 py-0.5 text-[11px] text-white">{i + 1} / {LISTING.photos.length}</span>
+            {i === 0 && <span className="absolute left-3 top-3 rounded-full bg-black/55 px-2.5 py-1 text-[10px] text-white">AI-generated photos</span>}
           </div>
         ))}
       </div>
-      <div className="mt-5 hidden h-[400px] grid-cols-4 grid-rows-2 gap-2 overflow-hidden rounded-2xl sm:grid">
+      <div className="relative mt-5 hidden h-[420px] grid-cols-4 grid-rows-2 gap-2 overflow-hidden rounded-2xl sm:grid">
+        <span className="absolute right-3 top-3 z-10 rounded-full bg-black/55 px-2.5 py-1 text-[11px] text-white">AI-generated photos of a fictional home</span>
         {LISTING.photos.map((p, i) => (
           <div key={p.label} className={`relative bg-gradient-to-br ${p.tone} ${i === 0 ? "col-span-2 row-span-2" : ""}`}>
-            <div className="absolute inset-0 opacity-[0.12] [background-image:radial-gradient(#000_1px,transparent_1px)] [background-size:14px_14px]" />
-            <span className="absolute bottom-3 left-3 rounded-full bg-white/85 px-2.5 py-1 text-[11px] font-medium">{p.label}</span>
+            <img src={p.src} alt={`${p.label}, AI-generated illustration`} className="absolute inset-0 h-full w-full object-cover" loading={i === 0 ? "eager" : "lazy"} />
+            <span className="absolute bottom-3 left-3 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-medium shadow-sm">{p.label}</span>
           </div>
         ))}
       </div>

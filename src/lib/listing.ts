@@ -15,11 +15,11 @@ export const LISTING = {
   beds: 2,
   baths: 1,
   photos: [
-    { label: "Living room", tone: "from-amber-200 via-orange-100 to-rose-100" },
-    { label: "Work desk by the window", tone: "from-sky-200 via-cyan-100 to-emerald-100" },
-    { label: "Bedroom", tone: "from-rose-200 via-pink-100 to-amber-50" },
-    { label: "Kitchen", tone: "from-lime-200 via-emerald-100 to-teal-50" },
-    { label: "Street view", tone: "from-indigo-200 via-violet-100 to-sky-50" },
+    { label: "Living room", src: "/photos/living.jpg", tone: "from-amber-200 via-orange-100 to-rose-100" },
+    { label: "Work desk by the window", src: "/photos/desk.jpg", tone: "from-sky-200 via-cyan-100 to-emerald-100" },
+    { label: "Bedroom", src: "/photos/bedroom.jpg", tone: "from-rose-200 via-pink-100 to-amber-50" },
+    { label: "Kitchen", src: "/photos/kitchen.jpg", tone: "from-lime-200 via-emerald-100 to-teal-50" },
+    { label: "Street view", src: "/photos/street.jpg", tone: "from-indigo-200 via-violet-100 to-sky-50" },
   ],
   highlights: [
     "Dedicated workspace",
