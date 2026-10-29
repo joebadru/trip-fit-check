@@ -161,6 +161,7 @@ async function callModel(which: "primary" | "fallback", trip: TripContext, sourc
     temperature: 0,
     maxOutputTokens: isPrimary ? 2000 : 8000,
     maxRetries: 0,
+    providerOptions: isPrimary ? undefined : { google: { thinkingConfig: { thinkingLevel: "low" } } },
     abortSignal: AbortSignal.timeout(Math.max(1000, timeoutMs ?? (isPrimary ? PRIMARY_BUDGET_MS : FALLBACK_BUDGET_MS))),
   });
   return { id, raw: result.output as z.infer<typeof schema>, usage: result.usage as { inputTokens?: number; outputTokens?: number } | undefined };
