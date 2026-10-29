@@ -8,6 +8,8 @@ export type TrackEvent =
   | "tripfit_question_answered"
   | "tripfit_voice_used"
   | "tripfit_check_completed"
+  | "tripfit_check_failed"
+  | "tripfit_fallback_message_host"
   | "tripfit_need_added"
   | "tripfit_ask_host_clicked"
   | "tripfit_ask_guest_clicked"

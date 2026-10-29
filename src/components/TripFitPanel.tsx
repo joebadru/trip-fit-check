@@ -52,6 +52,7 @@ export function TripFitPanel({ embedded = false }: { embedded?: boolean }) {
   const [voiceOn, setVoiceOn] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [fallbackSent, setFallbackSent] = useState(false);
   const [result, setResult] = useState<FitResult | null>(null);
   const [checkedWithAnswers, setCheckedWithAnswers] = useState(0);
   const [askedNeeds, setAskedNeeds] = useState<Set<string>>(new Set());
@@ -73,8 +74,12 @@ export function TripFitPanel({ embedded = false }: { embedded?: boolean }) {
     async (needList: string[]) => {
       setLoading(true);
       setError("");
+      setResult(null);
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 30000);
       try {
         const res = await fetch("/api/fit", {
+          signal: ctrl.signal,
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ trip: { who, purpose, needs: needList }, hostAnswers: answers }),
@@ -91,8 +96,10 @@ export function TripFitPanel({ embedded = false }: { embedded?: boolean }) {
         });
         if (voiceOn) speak(data.overall);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Something went wrong");
+        setError(e instanceof Error ? e.message || "error" : "error");
+        track("tripfit_check_failed", { reason: e instanceof Error ? e.name : "unknown" });
       } finally {
+        clearTimeout(timer);
         setLoading(false);
       }
     },
@@ -217,7 +224,32 @@ export function TripFitPanel({ embedded = false }: { embedded?: boolean }) {
           </div>
         )}
 
-        {error && <div className="rounded-xl bg-nofit-soft px-3 py-2 text-sm text-nofit">{error}</div>}
+        {error && (
+          <div className="rise rounded-xl border border-line bg-gray-50 px-3 py-3 text-sm" role="alert">
+            <div className="font-semibold">We couldn’t check this right now.</div>
+            <p className="mt-0.5 text-muted">Nothing was guessed. You can try again, or send your questions straight to Inês.</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button onClick={() => run(needs)} className="rounded-full bg-ink px-3 py-1.5 text-xs font-semibold text-white">
+                Try again
+              </button>
+              {fallbackSent ? (
+                <span className="self-center text-xs font-semibold text-fit">Sent to the host ✓</span>
+              ) : (
+                <button
+                  onClick={() => {
+                    const list = needs.length ? needs : ["my trip"];
+                    ask(list.join(", "), `Hi Inês, before I book, could you tell me about: ${list.join("; ").toLowerCase()}?`);
+                    setFallbackSent(true);
+                    track("tripfit_fallback_message_host", { needs: list.length, reason: error.slice(0, 60) });
+                  }}
+                  className="rounded-full border border-ink px-3 py-1.5 text-xs font-semibold"
+                >
+                  Message the host
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {result && !loading && (
           <>
