@@ -10,6 +10,8 @@ export type TrackEvent =
   | "tripfit_check_completed"
   | "tripfit_need_added"
   | "tripfit_ask_host_clicked"
+  | "tripfit_ask_guest_clicked"
+  | "past_guest_answered"
   | "tripfit_recheck_with_host_answers"
   | "booking_cta_clicked";
 

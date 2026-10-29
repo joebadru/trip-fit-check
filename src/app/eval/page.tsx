@@ -12,6 +12,7 @@ const CAT_LABEL: Record<string, string> = {
   abstain: "Not stated: must abstain",
   adversarial: "Adversarial",
   "host-loop": "Host answer loop",
+  "guest-loop": "Past guest answer",
 };
 
 function Tile({ label, value, suffix, gate }: { label: string; value: number; suffix?: string; gate?: { op: string; target: number } }) {

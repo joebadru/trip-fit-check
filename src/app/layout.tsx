@@ -15,7 +15,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}>
         <Nav />
         {children}
-        <footer className="mt-20 border-t border-line">
+        <footer className="mt-20 border-t border-line pb-28 lg:pb-0">
           <div className="mx-auto max-w-6xl px-4 py-6 text-xs text-muted sm:px-6">
             Concept prototype by Joseph Badru for a product test. Not affiliated with or endorsed by Airbnb. Listing, host and reviews are fictional.
           </div>

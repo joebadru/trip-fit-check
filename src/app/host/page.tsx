@@ -34,7 +34,7 @@ function PendingCard({ q, onAnswer }: { q: PendingQuestion; onAnswer: (q: Pendin
 }
 
 export default function HostInbox() {
-  const { pending, answers, answer, reset } = useHostStore();
+  const { pending, hostAnswers: answers, answer, reset } = useHostStore();
   return (
     <main className="mx-auto max-w-3xl px-4 pt-8 sm:px-6">
       <p className="text-xs uppercase tracking-widest text-muted">Host view · Inês</p>

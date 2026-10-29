@@ -5,6 +5,7 @@ import { speak, VoiceButton } from "./VoiceButton";
 import { useHostStore } from "@/lib/hostStore";
 import { track } from "@/lib/track";
 import type { Assessment, FitResult } from "@/lib/types";
+import type { Reviewer } from "@/lib/listing";
 
 const WHO = ["Just me", "Couple", "Family with kids", "Group of friends"];
 const PURPOSE = ["Remote work", "Holiday", "Visiting family", "Business trip"];
@@ -42,7 +43,7 @@ function Bubble({ who, children }: { who: "agent" | "guest"; children: React.Rea
   );
 }
 
-export function TripFitPanel() {
+export function TripFitPanel({ embedded = false }: { embedded?: boolean }) {
   const [step, setStep] = useState<Step>(0);
   const [who, setWho] = useState("");
   const [purpose, setPurpose] = useState("");
@@ -54,7 +55,8 @@ export function TripFitPanel() {
   const [result, setResult] = useState<FitResult | null>(null);
   const [checkedWithAnswers, setCheckedWithAnswers] = useState(0);
   const [askedNeeds, setAskedNeeds] = useState<Set<string>>(new Set());
-  const { answers, ask } = useHostStore();
+  const { answers, ask, askGuest } = useHostStore();
+  const [askedGuestNeeds, setAskedGuestNeeds] = useState<Set<string>>(new Set());
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => track("tripfit_opened"), []);
@@ -143,18 +145,24 @@ export function TripFitPanel() {
     track("tripfit_ask_host_clicked", { need: a.need, downgraded: !!a.downgraded });
   };
 
+  const onAskGuest = (a: Assessment, r: Reviewer) => {
+    askGuest(r.reviewId, r.name, a.need, `Hi ${r.name}, I'm thinking of booking this place. From your stay, how was it for this: ${a.need.toLowerCase()}?`);
+    setAskedGuestNeeds((s) => new Set(s).add(a.need));
+    track("tripfit_ask_guest_clicked", { need: a.need, reviewer: r.reviewId, verdict: a.verdict });
+  };
+
   const newAnswers = answers.length > checkedWithAnswers && result;
   const canCheck = needs.length > 0 || draft.trim().length > 2;
   const chips = useMemo(() => (step === 0 ? WHO : step === 1 ? PURPOSE : NEEDS), [step]);
 
   return (
-    <section id="trip-fit" className="overflow-hidden rounded-2xl border border-line bg-white shadow-[0_6px_24px_rgba(0,0,0,0.08)]">
+    <section id={embedded ? undefined : "trip-fit"} className={`overflow-hidden rounded-2xl border border-line bg-white ${embedded ? "" : "shadow-[0_6px_24px_rgba(0,0,0,0.08)]"}`}>
       <div className="flex items-center justify-between border-b border-line px-4 py-3">
         <div className="flex items-center gap-2">
           <span className="grid h-7 w-7 place-items-center rounded-full bg-brand text-xs font-bold text-white">AI</span>
           <div>
             <div className="text-sm font-semibold leading-tight">Will this fit my trip?</div>
-            <div className="text-[11px] text-muted">Answers only from this listing, its reviews and the host</div>
+            <div className="text-[11px] text-muted">From this listing, its reviews, the host and past guests</div>
           </div>
         </div>
         <button
@@ -166,7 +174,7 @@ export function TripFitPanel() {
         </button>
       </div>
 
-      <div className="max-h-[640px] space-y-3 overflow-y-auto px-4 py-4">
+      <div className={`space-y-3 overflow-y-auto px-4 py-4 ${embedded ? "max-h-[calc(100dvh-290px)]" : "max-h-[640px]"}`}>
         <Bubble who="agent">{PROMPTS[0]}</Bubble>
         {who && <Bubble who="guest">{who}</Bubble>}
         {step >= 1 && <Bubble who="agent">{PROMPTS[1]}</Bubble>}
@@ -213,7 +221,7 @@ export function TripFitPanel() {
 
         {result && !loading && (
           <>
-            <FitCard result={result} onAsk={onAsk} askedNeeds={askedNeeds} />
+            <FitCard result={result} onAsk={onAsk} askedNeeds={askedNeeds} onAskGuest={onAskGuest} askedGuestNeeds={askedGuestNeeds} />
             {newAnswers && (
               <button
                 onClick={() => {
@@ -222,7 +230,7 @@ export function TripFitPanel() {
                 }}
                 className="rise w-full rounded-xl border border-fit bg-fit-soft px-3 py-2.5 text-sm font-semibold text-fit"
               >
-                The host just answered. Re-check my trip →
+                New answer from the host or a past guest. Re-check my trip →
               </button>
             )}
             {result.followUp && <Bubble who="agent">{result.followUp}</Bubble>}

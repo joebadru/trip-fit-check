@@ -116,13 +116,54 @@ export const SOURCES: Source[] = [
   },
 ];
 
+export type Reviewer = { reviewId: string; name: string; stayed: string; trip: string; optIn: boolean; tags: string[] };
+
+/** Past guests and whether they opted in to answer questions from future guests. */
+export const REVIEWERS: Reviewer[] = [
+  { reviewId: "R1", name: "Maya", stayed: "Mar 2026", trip: "Remote work, 2 weeks", optIn: true, tags: ["wi-fi", "wifi", "internet", "call", "zoom", "desk", "work", "chair", "monitor", "office"] },
+  { reviewId: "R2", name: "Tom", stayed: "Aug 2025", trip: "Family with two kids", optIn: true, tags: ["kid", "child", "family", "stroller", "pram", "stairs", "crib", "cot", "baby", "toddler", "high chair", "bath"] },
+  { reviewId: "R3", name: "Ana", stayed: "Jun 2026", trip: "Weekend city break", optIn: true, tags: ["quiet", "noise", "sleep", "night", "bars", "weekend", "neighbourhood", "neighborhood"] },
+  { reviewId: "R4", name: "Kenji", stayed: "Apr 2026", trip: "Couple, foodie trip", optIn: false, tags: ["kitchen", "cook"] },
+  { reviewId: "R5", name: "Sofia", stayed: "Jan 2026", trip: "Couple, winter stay", optIn: true, tags: ["stream", "evening", "tv", "heating", "winter", "cold"] },
+  { reviewId: "R6", name: "Luca", stayed: "Aug 2025", trip: "Summer holiday", optIn: false, tags: ["air", "ac", "hot", "summer", "cool"] },
+  { reviewId: "R7", name: "Priya", stayed: "Feb 2026", trip: "Late arrival, business trip", optIn: true, tags: ["check-in", "check in", "arrival", "late", "lockbox", "midnight", "luggage"] },
+  { reviewId: "R8", name: "Daniel", stayed: "May 2026", trip: "Friends trip", optIn: false, tags: ["sofa", "bed", "sleep"] },
+];
+
+/** Pick the most relevant past guest who opted in: one already cited, else the best tag match. */
+export function suggestReviewer(need: string, citedIds: string[]): Reviewer | undefined {
+  const opted = REVIEWERS.filter((r) => r.optIn);
+  const cited = opted.find((r) => citedIds.includes(r.reviewId));
+  if (cited) return cited;
+  const n = need.toLowerCase();
+  let best: Reviewer | undefined;
+  let score = 0;
+  for (const r of opted) {
+    const s = r.tags.filter((t) => n.includes(t)).length;
+    if (s > score) {
+      score = s;
+      best = r;
+    }
+  }
+  return best;
+}
+
 export function hostAnswersToSources(answers: HostAnswer[]): Source[] {
-  return answers.map((a) => ({
-    id: a.id,
-    kind: "host_answer" as const,
-    label: `Host answer · "${a.question}"`,
-    text: a.answer,
-  }));
+  return answers.map((a) =>
+    a.kind === "guest"
+      ? {
+          id: a.id,
+          kind: "guest_answer" as const,
+          label: `Past guest answer · ${a.author || "a past guest"} · "${a.question}"`,
+          text: a.answer,
+        }
+      : {
+          id: a.id,
+          kind: "host_answer" as const,
+          label: `Host answer · "${a.question}"`,
+          text: a.answer,
+        },
+  );
 }
 
 export function allSources(answers: HostAnswer[] = []): Source[] {

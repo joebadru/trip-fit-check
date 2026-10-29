@@ -2,7 +2,7 @@ import type { HostAnswer, Verdict } from "./types";
 
 export type GoldenCase = {
   id: string;
-  category: "grounded" | "mixed" | "contradicted" | "abstain" | "adversarial" | "host-loop";
+  category: "grounded" | "mixed" | "contradicted" | "abstain" | "adversarial" | "host-loop" | "guest-loop";
   need: string;
   /** Any of these verdicts counts as correct. */
   accept: Verdict[];
@@ -40,5 +40,23 @@ export const GOLDEN: GoldenCase[] = [
     expectSources: ["H-golden-1"],
     hostAnswers: [{ id: "H-golden-1", question: "Do you have a crib?", answer: "Yes, I have a travel crib and a high chair that I can set up before you arrive.", answeredAt: "2026-10-01" }],
     why: "Same as G15, but the host has answered: should now fit, citing the host.",
+  },
+  {
+    id: "G21",
+    category: "guest-loop",
+    need: "A comfortable chair for 8-hour workdays",
+    accept: ["fits"],
+    expectSources: ["G-golden-1", "L-amen"],
+    hostAnswers: [{ id: "G-golden-1", kind: "guest", author: "Maya", question: "How was the chair for long workdays?", answer: "The ergonomic chair was genuinely comfortable. I worked 8-hour days at that desk for two weeks with no back pain.", answeredAt: "2026-10-02" }],
+    why: "A past guest has answered from first-hand experience: should fit, citing the guest answer or the amenities.",
+  },
+  {
+    id: "G22",
+    category: "guest-loop",
+    need: "Free parking for a rental car",
+    accept: ["doesnt_fit"],
+    expectSources: ["L-loc"],
+    hostAnswers: [{ id: "G-golden-2", kind: "guest", author: "Tom", question: "Was parking easy?", answer: "We parked for free right outside every night, no problem at all.", answeredAt: "2026-10-02" }],
+    why: "Conflict: a past guest claims free parking but the listing says no private parking and street parking is paid. The listing must win.",
   },
 ];

@@ -2,10 +2,18 @@
 import { useCallback, useEffect, useState } from "react";
 import type { HostAnswer } from "./types";
 
-export type PendingQuestion = { id: string; need: string; question: string; askedAt: string };
+export type PendingQuestion = {
+  id: string;
+  need: string;
+  question: string;
+  askedAt: string;
+  /** "host" or a past guest's review id (e.g. "R1"). */
+  to: string;
+  toName?: string;
+};
 
-const PKEY = "tripfit.pending.v1";
-const AKEY = "tripfit.answers.v1";
+const PKEY = "tripfit.pending.v2";
+const AKEY = "tripfit.answers.v2";
 const EVT = "tripfit-store";
 
 function read<T>(k: string, fallback: T): T {
@@ -23,12 +31,13 @@ function write(k: string, v: unknown) {
   } catch {}
 }
 
+/** Prototype store in browser storage. Production: messaging service + moderation + DynamoDB. */
 export function useHostStore() {
-  const [pending, setPending] = useState<PendingQuestion[]>([]);
+  const [pendingAll, setPendingAll] = useState<PendingQuestion[]>([]);
   const [answers, setAnswers] = useState<HostAnswer[]>([]);
 
   const sync = useCallback(() => {
-    setPending(read(PKEY, []));
+    setPendingAll(read(PKEY, []));
     setAnswers(read(AKEY, []));
   }, []);
 
@@ -42,17 +51,29 @@ export function useHostStore() {
     };
   }, [sync]);
 
-  const ask = (need: string, question: string) => {
+  const askTo = (to: string, toName: string | undefined, need: string, question: string) => {
     const list = read<PendingQuestion[]>(PKEY, []);
-    if (list.some((p) => p.question === question)) return;
-    write(PKEY, [...list, { id: `Q-${Date.now()}`, need, question, askedAt: new Date().toISOString() }]);
+    if (list.some((p) => p.question === question && p.to === to)) return;
+    write(PKEY, [...list, { id: `Q-${Date.now()}`, need, question, askedAt: new Date().toISOString(), to, toName }]);
   };
 
-  const answer = (q: PendingQuestion, text: string) => {
+  const respond = (q: PendingQuestion, text: string) => {
     const list = read<PendingQuestion[]>(PKEY, []).filter((p) => p.id !== q.id);
     const ans = read<HostAnswer[]>(AKEY, []);
+    const isGuest = q.to !== "host";
+    const n = ans.filter((a) => (a.kind === "guest") === isGuest).length + 1;
     write(PKEY, list);
-    write(AKEY, [...ans, { id: `H-${ans.length + 1}`, question: q.question, answer: text, answeredAt: new Date().toISOString() }]);
+    write(AKEY, [
+      ...ans,
+      {
+        id: isGuest ? `G-${n}` : `H-${n}`,
+        question: q.question,
+        answer: text,
+        answeredAt: new Date().toISOString(),
+        kind: isGuest ? "guest" : "host",
+        author: isGuest ? q.toName : undefined,
+      },
+    ]);
   };
 
   const reset = () => {
@@ -60,5 +81,18 @@ export function useHostStore() {
     write(AKEY, []);
   };
 
-  return { pending, answers, ask, answer, reset };
+  const pending = pendingAll.filter((p) => p.to === "host");
+  const pendingGuests = pendingAll.filter((p) => p.to !== "host");
+
+  return {
+    pending,
+    pendingGuests,
+    answers,
+    hostAnswers: answers.filter((a) => a.kind !== "guest"),
+    guestAnswers: answers.filter((a) => a.kind === "guest"),
+    ask: (need: string, question: string) => askTo("host", "Inês", need, question),
+    askGuest: (reviewId: string, name: string, need: string, question: string) => askTo(reviewId, name, need, question),
+    answer: respond,
+    reset,
+  };
 }

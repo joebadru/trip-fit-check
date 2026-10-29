@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import type { Assessment, FitResult, Verdict } from "@/lib/types";
+import { suggestReviewer, type Reviewer } from "@/lib/listing";
 
 export const VERDICT: Record<Verdict, { label: string; cls: string; dot: string; icon: string }> = {
   fits: { label: "Fits", cls: "bg-fit-soft text-fit", dot: "bg-fit", icon: "✓" },
@@ -19,8 +20,25 @@ export function VerdictPill({ v }: { v: Verdict }) {
   );
 }
 
-function Row({ a, onAsk, asked }: { a: Assessment; onAsk: (a: Assessment) => void; asked: boolean }) {
+type RowProps = {
+  a: Assessment;
+  onAsk: (a: Assessment) => void;
+  asked: boolean;
+  onAskGuest: (a: Assessment, r: Reviewer) => void;
+  askedGuest: boolean;
+};
+
+function GuestAvatar({ r }: { r: Reviewer }) {
+  return (
+    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-gradient-to-br from-rose-300 to-amber-200 text-[11px] font-bold text-ink">
+      {r.name[0]}
+    </span>
+  );
+}
+
+function Row({ a, onAsk, asked, onAskGuest, askedGuest }: RowProps) {
   const [open, setOpen] = useState(a.verdict !== "fits");
+  const reviewer = suggestReviewer(a.need, a.evidence.map((e) => e.sourceId));
   return (
     <li className="rise rounded-xl border border-line bg-white p-3.5">
       <button className="flex w-full items-start justify-between gap-3 text-left" onClick={() => setOpen((o) => !o)}>
@@ -49,14 +67,48 @@ function Row({ a, onAsk, asked }: { a: Assessment; onAsk: (a: Assessment) => voi
           <span className="text-xs text-muted">
             {a.downgraded ? "The AI's answer couldn't be verified, so we're not guessing." : "The listing and reviews don't say."}
           </span>
-          {asked ? (
-            <span className="text-xs font-semibold text-fit">Question sent to the host ✓</span>
+          <div className="flex flex-wrap gap-2">
+            {asked ? (
+              <span className="text-xs font-semibold text-fit">Sent to the host ✓</span>
+            ) : (
+              <button
+                onClick={() => onAsk(a)}
+                className="rounded-full bg-ink px-3 py-1.5 text-xs font-semibold text-white hover:bg-black"
+              >
+                Ask the host
+              </button>
+            )}
+            {reviewer &&
+              (askedGuest ? (
+                <span className="text-xs font-semibold text-fit">Sent to {reviewer.name} ✓</span>
+              ) : (
+                <button
+                  onClick={() => onAskGuest(a, reviewer)}
+                  className="rounded-full border border-ink px-3 py-1.5 text-xs font-semibold text-ink hover:bg-gray-50"
+                >
+                  Ask {reviewer.name}, a past guest
+                </button>
+              ))}
+          </div>
+        </div>
+      )}
+      {a.verdict !== "unknown" && reviewer && (
+        <div className="mt-3 flex items-center gap-2.5 rounded-lg bg-gradient-to-r from-rose-50 to-amber-50 px-3 py-2">
+          <GuestAvatar r={reviewer} />
+          <div className="min-w-0 flex-1 text-xs leading-snug">
+            <span className="font-semibold">Want a first-hand take?</span>{" "}
+            <span className="text-muted">
+              {reviewer.name} stayed in {reviewer.stayed} ({reviewer.trip.toLowerCase()}) and is happy to answer questions.
+            </span>
+          </div>
+          {askedGuest ? (
+            <span className="shrink-0 text-xs font-semibold text-fit">Sent ✓</span>
           ) : (
             <button
-              onClick={() => onAsk(a)}
-              className="rounded-full bg-ink px-3 py-1.5 text-xs font-semibold text-white hover:bg-black"
+              onClick={() => onAskGuest(a, reviewer)}
+              className="shrink-0 rounded-full bg-white px-3 py-1.5 text-xs font-semibold ring-1 ring-line hover:ring-ink"
             >
-              Ask the host in one tap
+              Ask {reviewer.name}
             </button>
           )}
         </div>
@@ -69,10 +121,14 @@ export function FitCard({
   result,
   onAsk,
   askedNeeds,
+  onAskGuest,
+  askedGuestNeeds,
 }: {
   result: FitResult;
   onAsk: (a: Assessment) => void;
   askedNeeds: Set<string>;
+  onAskGuest: (a: Assessment, r: Reviewer) => void;
+  askedGuestNeeds: Set<string>;
 }) {
   const counts = result.assessments.reduce(
     (m, a) => ({ ...m, [a.verdict]: (m[a.verdict] || 0) + 1 }),
@@ -102,7 +158,7 @@ export function FitCard({
       </div>
       <ul className="space-y-2">
         {result.assessments.map((a, i) => (
-          <Row key={a.need + i} a={a} onAsk={onAsk} asked={askedNeeds.has(a.need)} />
+          <Row key={a.need + i} a={a} onAsk={onAsk} asked={askedNeeds.has(a.need)} onAskGuest={onAskGuest} askedGuest={askedGuestNeeds.has(a.need)} />
         ))}
       </ul>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 text-[11px] text-muted">

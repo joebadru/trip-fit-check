@@ -1,6 +1,7 @@
 import { LISTING, SOURCES } from "@/lib/listing";
 import { TripFitPanel } from "@/components/TripFitPanel";
 import { BookButton } from "@/components/BookButton";
+import { MobileBar } from "@/components/MobileBar";
 
 function Stars() {
   return <span aria-hidden className="text-ink">★</span>;
@@ -16,7 +17,7 @@ export default function ListingPage() {
   return (
     <main className="mx-auto max-w-6xl px-4 pt-6 sm:px-6">
       <div className="mb-4 rounded-xl border border-dashed border-line bg-gray-50 px-4 py-2.5 text-xs text-muted">
-        Prototype guest view: a fictional listing with the proposed <b className="text-ink">Trip Fit Check</b> on the right. Try it, tap “Ask the host” on anything it can’t confirm, then answer it in the Host inbox.
+        Prototype guest view: a fictional listing with the proposed <b className="text-ink">Trip Fit Check</b>. Run a check, tap “Ask the host” or “Ask a past guest” on anything it can’t confirm, then answer it in the Host or Past guests inbox.
       </div>
 
       <h1 className="text-[26px] font-semibold tracking-tight">{LISTING.title}</h1>
@@ -29,12 +30,18 @@ export default function ListingPage() {
         <span className="underline">{LISTING.city}</span>
       </div>
 
-      <div className="mt-5 grid h-[320px] grid-cols-4 grid-rows-2 gap-2 overflow-hidden rounded-2xl sm:h-[400px]">
+      <div className="-mx-4 mt-5 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 sm:hidden">
         {LISTING.photos.map((p, i) => (
-          <div
-            key={p.label}
-            className={`relative bg-gradient-to-br ${p.tone} ${i === 0 ? "col-span-4 row-span-2 sm:col-span-2" : "hidden sm:block"}`}
-          >
+          <div key={p.label} className={`relative h-64 w-[85%] shrink-0 snap-center overflow-hidden rounded-2xl bg-gradient-to-br ${p.tone}`}>
+            <div className="absolute inset-0 opacity-[0.12] [background-image:radial-gradient(#000_1px,transparent_1px)] [background-size:14px_14px]" />
+            <span className="absolute bottom-3 left-3 rounded-full bg-white/85 px-2.5 py-1 text-[11px] font-medium">{p.label}</span>
+            <span className="absolute bottom-3 right-3 rounded-md bg-black/55 px-2 py-0.5 text-[11px] text-white">{i + 1} / {LISTING.photos.length}</span>
+          </div>
+        ))}
+      </div>
+      <div className="mt-5 hidden h-[400px] grid-cols-4 grid-rows-2 gap-2 overflow-hidden rounded-2xl sm:grid">
+        {LISTING.photos.map((p, i) => (
+          <div key={p.label} className={`relative bg-gradient-to-br ${p.tone} ${i === 0 ? "col-span-2 row-span-2" : ""}`}>
             <div className="absolute inset-0 opacity-[0.12] [background-image:radial-gradient(#000_1px,transparent_1px)] [background-size:14px_14px]" />
             <span className="absolute bottom-3 left-3 rounded-full bg-white/85 px-2.5 py-1 text-[11px] font-medium">{p.label}</span>
           </div>
@@ -86,7 +93,7 @@ export default function ListingPage() {
               <h3 className="text-lg font-semibold">
                 <Stars /> {LISTING.rating} · {LISTING.reviewCount} reviews
               </h3>
-              <a href="#trip-fit" className="text-sm font-semibold underline">
+              <a href="#trip-fit" className="hidden text-sm font-semibold underline lg:inline">
                 Not sure it fits? Let the AI check for you
               </a>
             </div>
@@ -102,7 +109,7 @@ export default function ListingPage() {
           </section>
         </div>
 
-        <aside className="lg:sticky lg:top-20 lg:self-start">
+        <aside className="hidden lg:sticky lg:top-20 lg:block lg:self-start">
           <div className="mb-4 rounded-2xl border border-line p-5 shadow-[0_6px_24px_rgba(0,0,0,0.06)]">
             <div className="flex items-baseline justify-between">
               <div>
@@ -126,12 +133,8 @@ export default function ListingPage() {
           <TripFitPanel />
         </aside>
       </div>
-      <a
-        href="#trip-fit"
-        className="fixed bottom-4 left-1/2 z-40 -translate-x-1/2 rounded-full bg-ink px-5 py-3 text-sm font-semibold text-white shadow-lg lg:hidden"
-      >
-        ✦ Will this fit my trip?
-      </a>
+      <MobileBar />
+      <div className="h-24 lg:hidden" />
     </main>
   );
 }

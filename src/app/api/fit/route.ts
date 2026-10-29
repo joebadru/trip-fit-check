@@ -18,6 +18,8 @@ export async function POST(req: Request) {
       question: String(h.question).slice(0, 200),
       answer: String(h.answer).slice(0, 600),
       answeredAt: String(h.answeredAt || ""),
+      kind: h.kind === "guest" ? ("guest" as const) : ("host" as const),
+      author: h.author ? String(h.author).slice(0, 60) : undefined,
     }));
     const result = await runFitCheck(trip, hostAnswers);
     return NextResponse.json(result);

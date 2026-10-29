@@ -2,7 +2,7 @@ export type Verdict = "fits" | "partial" | "doesnt_fit" | "unknown";
 
 export type Source = {
   id: string;
-  kind: "listing" | "rules" | "location" | "review" | "host_answer";
+  kind: "listing" | "rules" | "location" | "review" | "host_answer" | "guest_answer";
   label: string;
   text: string;
 };
@@ -35,6 +35,9 @@ export type HostAnswer = {
   question: string;
   answer: string;
   answeredAt: string;
+  /** "host" (default) or a past guest who opted in to answer questions. */
+  kind?: "host" | "guest";
+  author?: string;
 };
 
 export type FitResult = {
