@@ -9,7 +9,7 @@ export type CaseResult = {
   predicted: string;
   verdictCorrect: boolean;
   sourceMatch: boolean | null;
-  /** Model asserted something (fits / doesnt_fit / partial) where the truth is "not stated". */
+  /** Model asserted something (fits / doesnt_fit / partial) where the truth is "can't tell yet". */
   hallucinated: boolean;
   evidenceTotal: number;
   evidenceVerified: number;
@@ -84,7 +84,7 @@ export function summarize(results: CaseResult[]) {
 /** Release gates: the bar a model or prompt change must clear before shipping. */
 export const GATES = [
   { key: "verdictAccuracy", label: "Verdict accuracy", op: ">=", target: 90 },
-  { key: "abstentionRecall", label: "Says 'unknown' when it should", op: ">=", target: 95 },
+  { key: "abstentionRecall", label: "Says “Can’t tell yet” when it should", op: ">=", target: 95 },
   { key: "hallucinationRate", label: "Invented answers", op: "<=", target: 0 },
   { key: "citationFaithfulness", label: "Citations found in source", op: ">=", target: 95 },
   { key: "sourceMatchRate", label: "Cites the right source", op: ">=", target: 85 },

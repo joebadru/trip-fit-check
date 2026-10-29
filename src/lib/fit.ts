@@ -1,10 +1,30 @@
 import { generateText, Output } from "ai";
 import { anthropic } from "@ai-sdk/anthropic";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { z } from "zod";
 import { allSources, LISTING } from "./listing";
 import type { Assessment, Evidence, FitResult, HostAnswer, Source, TripContext, Verdict } from "./types";
 
+/* ---------- Model routing ----------
+ * Primary: Claude Sonnet. Backup: Gemini Flash, used only when the primary errors, is rate-limited
+ * or runs past its time budget. Both go through the same prompt, schema and citation guardrail,
+ * and the backup has to pass the same golden-set release gates before it is allowed to serve.
+ */
 export const MODEL_ID = process.env.TRIPFIT_MODEL || "claude-sonnet-5-5";
+export const FALLBACK_MODEL_ID = process.env.TRIPFIT_FALLBACK_MODEL || "gemini-3.8-flash";
+const PRIMARY_BUDGET_MS = Number(process.env.TRIPFIT_PRIMARY_TIMEOUT_MS || 20000);
+const FALLBACK_BUDGET_MS = Number(process.env.TRIPFIT_FALLBACK_TIMEOUT_MS || 25000);
+const GEMINI_KEY = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
+const google = createGoogleGenerativeAI({ apiKey: GEMINI_KEY });
+
+export function routingStatus() {
+  return {
+    primary: { model: MODEL_ID, configured: !!process.env.ANTHROPIC_API_KEY, timeoutMs: PRIMARY_BUDGET_MS },
+    fallback: { model: FALLBACK_MODEL_ID, configured: !!GEMINI_KEY, timeoutMs: FALLBACK_BUDGET_MS },
+  };
+}
+
+export type RouteChoice = "auto" | "primary" | "fallback";
 
 const schema = z.object({
   overall: z.string().describe("One or two plain sentences on how well this home fits the trip overall."),
@@ -127,37 +147,67 @@ export function applyGuardrails(raw: z.infer<typeof schema>, sources: Source[]) 
   return { assessments, evidenceTotal, evidenceVerified, downgrades };
 }
 
-export async function runFitCheck(trip: TripContext, hostAnswers: HostAnswer[] = []): Promise<FitResult> {
-  const sources = allSources(hostAnswers);
-  const started = Date.now();
-
-  if (!process.env.ANTHROPIC_API_KEY) {
-    if (process.env.TRIPFIT_MOCK === "1") return mockFit(trip, sources, started);
-    throw new Error("Missing ANTHROPIC_API_KEY. Add it in your Vercel project settings (Environment Variables).");
-  }
-
+async function callModel(which: "primary" | "fallback", trip: TripContext, sources: Source[]) {
+  const isPrimary = which === "primary";
   const result = await generateText({
-    model: anthropic(MODEL_ID),
+    model: isPrimary ? anthropic(MODEL_ID) : google(FALLBACK_MODEL_ID),
     system: SYSTEM_PROMPT,
     prompt: buildPrompt(trip, sources),
     output: Output.object({ schema }),
     temperature: 0,
-    maxOutputTokens: 2000,
+    maxOutputTokens: isPrimary ? 2000 : 8000,
+    maxRetries: isPrimary ? 0 : 1,
+    abortSignal: AbortSignal.timeout(isPrimary ? PRIMARY_BUDGET_MS : FALLBACK_BUDGET_MS),
   });
+  return { raw: result.output as z.infer<typeof schema>, usage: result.usage as { inputTokens?: number; outputTokens?: number } | undefined };
+}
 
-  const raw = result.output as z.infer<typeof schema>;
-  const g = applyGuardrails(raw, sources);
-  const usage = result.usage as { inputTokens?: number; outputTokens?: number } | undefined;
+function reasonOf(e: unknown) {
+  const msg = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
+  if (/abort|timeout/i.test(msg)) return "primary timed out";
+  if (/429|rate|overloaded|529/i.test(msg)) return "primary rate-limited or overloaded";
+  return "primary error";
+}
 
+export async function runFitCheck(trip: TripContext, hostAnswers: HostAnswer[] = [], route: RouteChoice = "auto"): Promise<FitResult> {
+  const sources = allSources(hostAnswers);
+  const started = Date.now();
+  const hasPrimary = !!process.env.ANTHROPIC_API_KEY;
+  const hasFallback = !!GEMINI_KEY;
+
+  if (!hasPrimary && !hasFallback) {
+    if (process.env.TRIPFIT_MOCK === "1") return mockFit(trip, sources, started);
+    throw new Error("No model is configured. Add ANTHROPIC_API_KEY (and optionally a Gemini key) in your Vercel project settings.");
+  }
+
+  let used: "primary" | "fallback" = route === "fallback" || !hasPrimary ? "fallback" : "primary";
+  let fallbackReason: string | undefined = used === "fallback" ? (route === "fallback" ? "forced for evaluation" : "primary not configured") : undefined;
+  let out: Awaited<ReturnType<typeof callModel>>;
+  try {
+    out = await callModel(used, trip, sources);
+  } catch (e) {
+    if (used === "primary" && route === "auto" && hasFallback) {
+      fallbackReason = reasonOf(e);
+      console.warn("[tripfit] routing to fallback:", fallbackReason);
+      used = "fallback";
+      out = await callModel("fallback", trip, sources);
+    } else {
+      throw e;
+    }
+  }
+
+  const g = applyGuardrails(out.raw, sources);
   return {
-    overall: raw.overall,
+    overall: out.raw.overall,
     assessments: g.assessments,
-    followUp: raw.followUp,
+    followUp: out.raw.followUp,
     meta: {
-      model: MODEL_ID,
+      model: used === "primary" ? MODEL_ID : FALLBACK_MODEL_ID,
+      route: used,
+      fallbackReason,
       latencyMs: Date.now() - started,
-      inputTokens: usage?.inputTokens,
-      outputTokens: usage?.outputTokens,
+      inputTokens: out.usage?.inputTokens,
+      outputTokens: out.usage?.outputTokens,
       evidenceTotal: g.evidenceTotal,
       evidenceVerified: g.evidenceVerified,
       downgrades: g.downgrades,

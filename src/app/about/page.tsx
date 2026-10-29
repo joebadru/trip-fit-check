@@ -38,7 +38,7 @@ export default function About() {
       <div className="mt-8 rounded-2xl bg-gradient-to-r from-rose-50 to-amber-50 p-5">
         <div className="text-sm font-semibold">Extension tested in the same flow: Ask a past guest</div>
         <p className="mt-1 text-[15px] text-muted">
-          Reviews answer yesterday’s questions. When a need is only partly covered or not stated, the guest can also ask a past guest who
+          Reviews answer yesterday’s questions. When a need is only partly covered or the AI can’t tell, the guest can also ask a past guest who
           stayed on a similar trip and opted in to answer. It is asynchronous Q&amp;A, not open chat: first name and stay month only,
           moderated, rate-limited, and the answer becomes a cited source for the next guest. Host answers and the listing still win if they
           conflict. Shipped behind its own flag so its impact can be measured separately.
@@ -64,9 +64,9 @@ export default function About() {
       <h2 className="mt-10 text-xl font-semibold">How it works</h2>
       <ol className="mt-3 space-y-2 text-[15px]">
         <li><b>1. Context.</b> The listing description, amenities, rules, location, recent reviews and published host answers are passed to the model as tagged sources.</li>
-        <li><b>2. Structured judgement.</b> The model returns a typed object: need, verdict (fits / partly / doesn’t fit / not stated), a one-line reason and exact quotes with source IDs.</li>
-        <li><b>3. Guardrail.</b> The server checks every quote against the source text. A verdict with no verifiable quote is withheld and shown as “not stated”.</li>
-        <li><b>4. Gap loop.</b> “Not stated” needs become one-tap questions to the host or an opted-in past guest. Their answers become new cited sources.</li>
+        <li><b>2. Structured judgement.</b> The model returns a typed object: need, verdict (fits / partly / doesn’t fit / can’t tell yet), a one-line reason and exact quotes with source IDs.</li>
+        <li><b>3. Guardrail.</b> The server checks every quote against the source text. A verdict with no verifiable quote is withheld and shown as “can’t tell yet”.</li>
+        <li><b>4. Gap loop.</b> “Can’t tell yet” needs become one-tap questions to the host or an opted-in past guest. Their answers become new cited sources.</li>
         <li><b>5. Validation.</b> A golden dataset with release gates runs on every change, plus online A/B metrics after launch.</li>
       </ol>
 

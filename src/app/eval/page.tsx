@@ -9,7 +9,7 @@ const CAT_LABEL: Record<string, string> = {
   grounded: "Clearly supported",
   mixed: "Mixed evidence",
   contradicted: "Contradicted",
-  abstain: "Not stated: must abstain",
+  abstain: "Can't tell yet: must abstain",
   adversarial: "Adversarial",
   "host-loop": "Host answer loop",
   "guest-loop": "Past guest answer",

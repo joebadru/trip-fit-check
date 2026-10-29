@@ -7,7 +7,7 @@ export const VERDICT: Record<Verdict, { label: string; cls: string; dot: string;
   fits: { label: "Fits", cls: "bg-fit-soft text-fit", dot: "bg-fit", icon: "✓" },
   partial: { label: "Partly", cls: "bg-partial-soft text-partial", dot: "bg-partial", icon: "◐" },
   doesnt_fit: { label: "Doesn't fit", cls: "bg-nofit-soft text-nofit", dot: "bg-nofit", icon: "✕" },
-  unknown: { label: "Not stated", cls: "bg-unknown-soft text-unknown", dot: "bg-unknown", icon: "?" },
+  unknown: { label: "Can't tell yet", cls: "bg-unknown-soft text-unknown", dot: "bg-unknown", icon: "?" },
 };
 
 export function VerdictPill({ v }: { v: Verdict }) {
@@ -168,6 +168,11 @@ export function FitCard({
         {result.meta.downgrades > 0 && <span>· {result.meta.downgrades} unverifiable answer(s) withheld</span>}
         <span>· {(result.meta.latencyMs / 1000).toFixed(1)}s</span>
         <span>· {result.meta.model}</span>
+        {result.meta.route === "fallback" && (
+          <span className="rounded-full bg-partial-soft px-2 py-0.5 font-medium text-partial" title={result.meta.fallbackReason}>
+            Answered by the backup model ({result.meta.fallbackReason || "routing"})
+          </span>
+        )}
       </div>
     </div>
   );

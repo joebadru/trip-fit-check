@@ -53,5 +53,8 @@ export type FitResult = {
     evidenceVerified: number;
     downgrades: number;
     mock?: boolean;
+    /** Which route answered: the primary model or the backup after a failure or timeout. */
+    route?: "primary" | "fallback";
+    fallbackReason?: string;
   };
 };

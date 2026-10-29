@@ -76,7 +76,7 @@ export function TripFitPanel({ embedded = false }: { embedded?: boolean }) {
       setError("");
       setResult(null);
       const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 30000);
+      const timer = setTimeout(() => ctrl.abort(), 50000);
       try {
         const res = await fetch("/api/fit", {
           signal: ctrl.signal,
