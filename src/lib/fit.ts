@@ -12,7 +12,7 @@ import type { Assessment, Evidence, FitResult, HostAnswer, Source, TripContext, 
  */
 export const MODEL_ID = process.env.TRIPFIT_MODEL || "claude-sonnet-5-5";
 /** Backup chain, tried in order. Comma-separated override: TRIPFIT_FALLBACK_MODELS. */
-export const FALLBACK_MODELS = (process.env.TRIPFIT_FALLBACK_MODELS || process.env.TRIPFIT_FALLBACK_MODEL || "gemini-3.8-flash,gemini-3.6-flash")
+export const FALLBACK_MODELS = (process.env.TRIPFIT_FALLBACK_MODELS || process.env.TRIPFIT_FALLBACK_MODEL || "gemini-3.6-flash,gemini-3.1-flash-lite")
   .split(",").map((m) => m.trim()).filter(Boolean);
 export const FALLBACK_MODEL_ID = FALLBACK_MODELS[0];
 const PRIMARY_BUDGET_MS = Number(process.env.TRIPFIT_PRIMARY_TIMEOUT_MS || 20000);
